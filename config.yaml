@@ -6,3 +6,29 @@ flask:
   host: 127.0.0.1
   port: 5000
   debug: true
+
+stream:
+  width: 640
+  height: 360
+  target_fps: 30
+
+processing:
+  convert_bgr_to_rgb: true
+  input_color: bgr
+  output_color: rgb
+  enable_contrast: true
+  contrast_alpha: 1.05
+  contrast_beta: 2
+
+text_detection:
+  enabled: true
+  language: it
+  gpu: true
+  threshold: 0.7
+  interval: 1.0
+  box_color: [0, 255, 0]
+  box_thickness: 1
+  text_color: [255, 0, 0]
+  text_font_scale: 0.5
+  text_font_thickness: 1
+  text_font: simplex
