@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="it">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>TelloDroneAI</title>
+		<style>
+			:root {
+				--bg: #0b1511;
+				--bg-2: #0f1d17;
+				--panel: #0f221a;
+				--panel-2: #132b21;
+				--text: #e5f5ee;
+				--muted: #9bcab6;
+				--accent: #34d399;
+				--accent-2: #10b981;
+				--border: #1e3a2e;
+				--shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+				--card-glow: 0 0 0 1px rgba(52, 211, 153, 0.14);
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+				color: var(--text);
+				background:
+					radial-gradient(1200px 800px at 10% 10%, #123525 0%, transparent 60%),
+					radial-gradient(900px 700px at 90% 20%, #0c241a 0%, transparent 55%),
+					linear-gradient(140deg, var(--bg), #08110d 40%, #07100c 100%);
+				min-height: 100vh;
+			}
+
+			.page {
+				display: flex;
+				flex-direction: column;
+				gap: 28px;
+				padding: 28px 40px 40px;
+			}
+
+			.header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 20px;
+				padding: 18px 22px;
+				border-radius: 18px;
+				background: linear-gradient(160deg, rgba(19, 43, 33, 0.9), rgba(15, 34, 26, 0.7));
+				border: 1px solid var(--border);
+				box-shadow: var(--shadow);
+			}
+
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				font-weight: 700;
+				letter-spacing: 0.5px;
+				font-size: 20px;
+			}
+
+			.brand svg {
+				width: 28px;
+				height: 28px;
+				fill: var(--accent);
+			}
+
+			.status {
+				display: inline-flex;
+				align-items: center;
+				gap: 10px;
+				color: var(--muted);
+				font-size: 14px;
+			}
+
+			.status span {
+				width: 8px;
+				height: 8px;
+				background: var(--accent);
+				border-radius: 50%;
+				box-shadow: 0 0 10px rgba(52, 211, 153, 0.7);
+			}
+
+			.content {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 24px;
+			}
+
+			.card {
+				background: linear-gradient(180deg, var(--panel), var(--panel-2));
+				border: 1px solid var(--border);
+				border-radius: 20px;
+				padding: 24px;
+				box-shadow: var(--shadow);
+				position: relative;
+				animation: fadeUp 420ms ease both;
+			}
+
+			.card::after {
+				content: "";
+				position: absolute;
+				inset: 0;
+				border-radius: 20px;
+				box-shadow: var(--card-glow);
+				pointer-events: none;
+			}
+
+			.card h2 {
+				margin: 0 0 16px 0;
+				font-size: 20px;
+			}
+
+			.card p {
+				margin: 0;
+				color: var(--muted);
+				line-height: 1.5;
+			}
+
+			.placeholder-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+				gap: 14px;
+			}
+
+			.placeholder {
+				border: 1px dashed rgba(52, 211, 153, 0.3);
+				border-radius: 14px;
+				padding: 14px;
+				background: rgba(16, 185, 129, 0.08);
+			}
+
+			.placeholder span {
+				display: block;
+				font-size: 12px;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				color: var(--muted);
+				margin-bottom: 6px;
+			}
+
+			.placeholder strong {
+				font-size: 16px;
+				font-weight: 600;
+			}
+
+			.control-grid {
+				display: grid;
+				grid-template-columns: 1.2fr 0.8fr;
+				gap: 20px;
+			}
+
+			.video-box {
+				background: rgba(9, 18, 14, 0.7);
+				border: 1px solid var(--border);
+				border-radius: 18px;
+				padding: 14px;
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+
+			.video-frame {
+				aspect-ratio: 16 / 9;
+				border-radius: 14px;
+				background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 12, 10, 0.8));
+				border: 1px solid rgba(52, 211, 153, 0.2);
+				overflow: hidden;
+				display: grid;
+				place-items: center;
+				color: var(--muted);
+				font-size: 14px;
+				letter-spacing: 0.4px;
+			}
+
+			.video-frame img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+			}
+
+			.controls {
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+
+			.toggle-input {
+				position: absolute;
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			.toggle {
+				display: inline-flex;
+				align-items: center;
+				gap: 10px;
+				padding: 10px 14px;
+				border-radius: 12px;
+				border: 1px solid var(--border);
+				background: rgba(52, 211, 153, 0.12);
+				color: var(--text);
+				font-weight: 600;
+				cursor: pointer;
+			}
+
+			.toggle-large {
+				padding: 16px 20px;
+				border-radius: 16px;
+				font-size: 16px;
+				gap: 12px;
+			}
+
+			.toggle svg {
+				width: 22px;
+				height: 22px;
+				fill: var(--accent);
+			}
+
+			.toggle .state {
+				font-weight: 700;
+				letter-spacing: 0.4px;
+			}
+
+			.toggle-input:checked + .toggle {
+				background: rgba(52, 211, 153, 0.22);
+				border-color: var(--accent);
+			}
+
+			.toggle-input:checked + .toggle .state-off {
+				display: none;
+			}
+
+			.toggle-input:not(:checked) + .toggle .state-on {
+				display: none;
+			}
+
+			.pad-row {
+				display: flex;
+				align-items: center;
+				gap: 18px;
+				flex-wrap: wrap;
+			}
+
+			.pad {
+				display: grid;
+				grid-template-columns: repeat(3, 70px);
+				grid-template-rows: repeat(3, 70px);
+				gap: 10px;
+				justify-content: start;
+			}
+
+			.pad button {
+				border: 1px solid var(--border);
+				background: rgba(16, 185, 129, 0.08);
+				border-radius: 16px;
+				color: var(--text);
+				font-weight: 700;
+				display: grid;
+				place-items: center;
+			}
+
+			.pad svg {
+				width: 28px;
+				height: 28px;
+				fill: var(--accent);
+			}
+
+			.pad .empty {
+				background: transparent;
+				border: 1px dashed rgba(52, 211, 153, 0.2);
+			}
+
+			.actions {
+				display: flex;
+				gap: 12px;
+				flex-direction: column;
+				min-width: 140px;
+			}
+
+			.btn {
+				border: 1px solid var(--accent);
+				color: var(--text);
+				background: rgba(52, 211, 153, 0.12);
+				padding: 12px 18px;
+				border-radius: 14px;
+				text-decoration: none;
+				font-weight: 600;
+				letter-spacing: 0.2px;
+				text-align: center;
+			}
+
+			@keyframes fadeUp {
+				from {
+					opacity: 0;
+					transform: translateY(12px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			@media (max-width: 960px) {
+				.page {
+					padding: 20px;
+				}
+
+				.header {
+					flex-direction: column;
+					align-items: flex-start;
+				}
+
+				.control-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.pad-row {
+					flex-direction: column;
+					align-items: flex-start;
+				}
+
+				.actions {
+					width: 100%;
+					flex-direction: row;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="page">
+			<header class="header">
+				<div class="brand">
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M12 2l4 6-4 14-4-14 4-6zm-7 9h5l2 7-7-7zm14 0h-5l-2 7 7-7z" />
+					</svg>
+					TelloDroneAI
+				</div>
+				<div class="status"><span></span>Online - Pronto al decollo</div>
+			</header>
+
+			<main class="content">
+				<section class="card">
+					<h2>Pannello di controllo</h2>
+					<div class="control-grid">
+						<div class="video-box">
+							<div class="video-frame">
+								<img src="/stream" alt="Stream video drone" />
+							</div>
+							<p>Stream Video</p>
+						</div>
+						<div class="controls">
+							<input class="toggle-input" type="checkbox" id="mic-toggle" />
+							<label class="toggle toggle-large" for="mic-toggle">
+								<svg viewBox="0 0 24 24" aria-hidden="true">
+									<path d="M12 2a6 6 0 0 1 6 6v4a6 6 0 1 1-12 0V8a6 6 0 0 1 6-6zm-3 6v4a3 3 0 0 0 6 0V8a3 3 0 0 0-6 0zm3 10a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7z" />
+								</svg>
+								Microfono
+								<span class="state state-off">Off</span>
+								<span class="state state-on">On</span>
+							</label>
+
+							<div class="pad-row">
+								<div class="pad">
+									<button class="empty" type="button" aria-hidden="true"></button>
+									<button type="button" aria-label="Sali">
+										<svg viewBox="0 0 24 24" aria-hidden="true">
+											<path d="M12 5l7 7h-5v7h-4v-7H5l7-7z" />
+										</svg>
+									</button>
+									<button class="empty" type="button" aria-hidden="true"></button>
+									<button type="button" aria-label="Sinistra">
+										<svg viewBox="0 0 24 24" aria-hidden="true">
+											<path d="M5 12l7-7v5h7v4h-7v5l-7-7z" />
+										</svg>
+									</button>
+									<button class="empty" type="button" aria-hidden="true"></button>
+									<button type="button" aria-label="Destra">
+										<svg viewBox="0 0 24 24" aria-hidden="true">
+											<path d="M19 12l-7-7v5H5v4h7v5l7-7z" />
+										</svg>
+									</button>
+									<button class="empty" type="button" aria-hidden="true"></button>
+									<button type="button" aria-label="Scendi">
+										<svg viewBox="0 0 24 24" aria-hidden="true">
+											<path d="M12 19l-7-7h5V5h4v7h5l-7 7z" />
+										</svg>
+									</button>
+									<button class="empty" type="button" aria-hidden="true"></button>
+								</div>
+
+								<div class="actions">
+									<a class="btn" href="#">Decolla</a>
+									<a class="btn" href="#">Atterra</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+			</main>
+		</div>
+	</body>
+</html>
