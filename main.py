@@ -3,6 +3,7 @@ import time
 
 import cv2
 import numpy as np
+from colorama import Fore, Style, init as colorama_init
 from djitellopy import tello
 from flask import Flask, Response, render_template
 
@@ -27,6 +28,9 @@ TARGET_FPS = float(stream_cfg.get("target_fps", 30.0))
 
 # Processor condiviso per tutte le richieste.
 processor = ImageProcessor(config)
+
+# Abilita colori ANSI su Windows.
+colorama_init(autoreset=True)
 
 
 def get_tello_client():
@@ -61,6 +65,7 @@ def generate_mjpeg():
     min_interval = 1.0 / TARGET_FPS
     last_sent = time.perf_counter()
     fps = 0.0
+    last_ocr_signature = None
 
     while True:
         try:
@@ -77,6 +82,21 @@ def generate_mjpeg():
                 result = processor.process_frame(frame, size=FRAME_SIZE)
                 if result.frame is None:
                     continue
+
+                text_results = result.results.get("text_detections", [])
+                if text_results:
+                    signature = tuple(item.get("text", "") for item in text_results)
+                    if signature != last_ocr_signature:
+                        print(f"\n{Fore.GREEN}[OCR]{Style.RESET_ALL} Risultati rilevati")
+                        print(f"{Fore.GREEN}{'-' * 48}{Style.RESET_ALL}")
+                        for idx, item in enumerate(text_results, start=1):
+                            text = item.get("text", "")
+                            conf = item.get("confidence", 0)
+                            bbox = item.get("bbox", [])
+                            print(f"{Fore.CYAN}{idx:02d}.{Style.RESET_ALL} \"{text}\" {Fore.YELLOW}(conf: {conf:.2f}){Style.RESET_ALL}")
+                            print(f"    {Fore.LIGHTBLACK_EX}bbox: {bbox}{Style.RESET_ALL}")
+                        print(f"{Fore.GREEN}{'-' * 48}{Style.RESET_ALL}")
+                        last_ocr_signature = signature
 
                 # Calcolo FPS sulla frequenza reale di invio.
                 now = time.perf_counter()
