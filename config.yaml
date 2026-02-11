@@ -13,9 +13,6 @@ stream:
   target_fps: 30
 
 processing:
-  convert_bgr_to_rgb: true
-  input_color: bgr
-  output_color: rgb
   enable_contrast: true
   contrast_alpha: 1.05
   contrast_beta: 2
