@@ -8,8 +8,8 @@ flask:
   debug: true
 
 stream:
-  width: 640
-  height: 360
+  width: 960
+  height: 720
   target_fps: 30
 
 processing:
