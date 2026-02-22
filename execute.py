@@ -14,33 +14,68 @@ class DroneActionExecutor:
         Args:
             tello_client: Istanza del drone Tello
         """
-        pass
+        self.tello_client = tello_client
+        self.commands = get_command_keywords()
 
     # ============== AZIONI DI VOLO ==============
 
     def takeoff(self):
         """Decollo del drone."""
-        pass
+        try:
+            self.tello_client.takeoff()
+            return True
+        except Exception as e:
+            print(f"Errore durante il decollo: {e}")
+            return False
 
     def land(self):
         """Atterraggio del drone."""
-        pass
+        try:
+            self.tello_client.land()
+            return True
+        except Exception as e:
+            print(f"Errore durante l'atterraggio: {e}")
+            return False
 
     def move_forward(self, distance=None):
         """Movimento in avanti."""
-        pass
+        try:
+            move_distance = int(distance or 30)
+            self.tello_client.move_forward(move_distance)
+            return True
+        except Exception as e:
+            print(f"Errore movimento avanti: {e}")
+            return False
 
     def move_backward(self, distance=None):
         """Movimento indietro."""
-        pass
+        try:
+            move_distance = int(distance or 30)
+            self.tello_client.move_back(move_distance)
+            return True
+        except Exception as e:
+            print(f"Errore movimento indietro: {e}")
+            return False
 
     def move_left(self, distance=None):
         """Movimento a sinistra."""
-        pass
+        try:
+            move_distance = int(distance or 30)
+            self.tello_client.move_left(move_distance)
+            return True
+        except Exception as e:
+            print(f"Errore movimento sinistra: {e}")
+            return False
 
     def move_right(self, distance=None):
         """Movimento a destra."""
-        pass
+        try:
+            move_distance = int(distance or 30)
+            self.tello_client.move_right(move_distance)
+            return True
+        except Exception as e:
+            print(f"Errore movimento destra: {e}")
+            return False
 
     def move_up(self, distance=None):
         """Movimento verso l'alto."""
@@ -80,7 +115,22 @@ class DroneActionExecutor:
 
     def perform_flip(self, direction=None):
         """Esecuzione di una capriola."""
-        pass
+        try:
+            flip_direction = (direction or "forward").lower()
+            if flip_direction in ("forward", "f"):
+                self.tello_client.flip_forward()
+            elif flip_direction in ("back", "backward", "b"):
+                self.tello_client.flip_back()
+            elif flip_direction in ("left", "l"):
+                self.tello_client.flip_left()
+            elif flip_direction in ("right", "r"):
+                self.tello_client.flip_right()
+            else:
+                self.tello_client.flip_forward()
+            return True
+        except Exception as e:
+            print(f"Errore durante il flip: {e}")
+            return False
 
     def set_speed(self, speed=None):
         """Impostazione della velocità di movimento."""
@@ -106,7 +156,19 @@ class DroneActionExecutor:
         Returns:
             bool: True se l'azione è stata eseguita, False altrimenti
         """
-        pass
+        if not text:
+            return False
+        
+        text_upper = text.upper()
+        
+        for keyword, action in self.commands.items():
+            if keyword.upper() in text_upper:
+                method = getattr(self, action, None)
+                if method and callable(method):
+                    method()
+                    return True
+        
+        return False
 
     def get_available_commands(self):
         """
@@ -115,7 +177,7 @@ class DroneActionExecutor:
         Returns:
             list: Lista di comandi supportati
         """
-        pass
+        return list(self.commands.keys())
 
 
 # ============== FUNZIONI HELPER ==============
@@ -166,4 +228,13 @@ def get_command_keywords():
     Returns:
         dict: Dizionario {parola_chiave: azione}
     """
-    pass
+    return {
+        "DECOLLA": "takeoff",
+        "ATTERRA": "land",
+        "FLIP": "perform_flip",
+        "AVANTI": "move_forward",
+        "INDIETRO": "move_backward",
+        "DIETRO": "move_backward",
+        "SINISTRA": "move_left",
+        "DESTRA": "move_right",
+    }

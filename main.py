@@ -9,6 +9,7 @@ from flask import Flask, Response, render_template
 
 from config_loader import config
 from image_processor import ImageProcessor
+from execute import DroneActionExecutor
 
 
 # Istanza Flask per servire UI e stream MJPEG.
@@ -17,6 +18,7 @@ app = Flask(__name__)
 # Lock e cache del client Tello per inizializzazione thread-safe.
 tello_lock = threading.Lock()
 tello_client = None
+action_executor = None
 
 # Parametri stream in un solo punto.
 stream_cfg = config.get("stream", {})
@@ -39,6 +41,7 @@ def get_tello_client():
     Ritorna l'istanza condivisa per tutte le richieste.
     """
     global tello_client
+    global action_executor
 
     with tello_lock:
         if tello_client is None:
@@ -53,6 +56,7 @@ def get_tello_client():
             # Tempo minimo per agganciare il decoder.
             time.sleep(1.0)
             tello_client = client
+            action_executor = DroneActionExecutor(client)
     return tello_client
 
 
@@ -65,7 +69,6 @@ def generate_mjpeg():
     min_interval = 1.0 / TARGET_FPS
     last_sent = time.perf_counter()
     fps = 0.0
-    last_ocr_signature = None
 
     while True:
         try:
@@ -85,18 +88,23 @@ def generate_mjpeg():
 
                 text_results = result.results.get("text_detections", [])
                 if text_results:
-                    signature = tuple(item.get("text", "") for item in text_results)
-                    if signature != last_ocr_signature:
-                        print(f"\n{Fore.GREEN}[OCR]{Style.RESET_ALL} Risultati rilevati")
-                        print(f"{Fore.GREEN}{'-' * 48}{Style.RESET_ALL}")
-                        for idx, item in enumerate(text_results, start=1):
-                            text = item.get("text", "")
-                            conf = item.get("confidence", 0)
-                            bbox = item.get("bbox", [])
-                            print(f"{Fore.CYAN}{idx:02d}.{Style.RESET_ALL} \"{text}\" {Fore.YELLOW}(conf: {conf:.2f}){Style.RESET_ALL}")
-                            print(f"    {Fore.LIGHTBLACK_EX}bbox: {bbox}{Style.RESET_ALL}")
-                        print(f"{Fore.GREEN}{'-' * 48}{Style.RESET_ALL}")
-                        last_ocr_signature = signature
+                    print(f"\n{Fore.GREEN}[OCR]{Style.RESET_ALL} Risultati rilevati")
+                    print(f"{Fore.GREEN}{'-' * 48}{Style.RESET_ALL}")
+                    for idx, item in enumerate(text_results, start=1):
+                        text = item.get("text", "")
+                        conf = item.get("confidence", 0)
+                        bbox = item.get("bbox", [])
+                        print(f"{Fore.CYAN}{idx:02d}.{Style.RESET_ALL} \"{text}\" {Fore.YELLOW}(conf: {conf:.2f}){Style.RESET_ALL}")
+                        print(f"    {Fore.LIGHTBLACK_EX}bbox: {bbox}{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}{'-' * 48}{Style.RESET_ALL}")
+
+                    # Concatena tutti i testi in una singola stringa e esegui il comando
+                    all_texts = " ".join(item.get("text", "") for item in text_results)
+                    if action_executor:
+                        if action_executor.execute_command(all_texts):
+                            print(f"{Fore.MAGENTA}[AZIONE]{Style.RESET_ALL} Comando eseguito: {all_texts}")
+                        else:
+                            print(f"{Fore.YELLOW}[AZIONE]{Style.RESET_ALL} Nessun comando riconosciuto")
 
                 # Calcolo FPS sulla frequenza reale di invio.
                 now = time.perf_counter()
