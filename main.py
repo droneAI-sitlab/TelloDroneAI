@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from colorama import Fore, Style, init as colorama_init
 from djitellopy import tello
-from flask import Flask, Response, render_template
+from flask import Flask, Response, jsonify, render_template, request
 
 from config_loader import config
 from image_processor import ImageProcessor
@@ -178,6 +178,63 @@ def index():
 def stream():
     """Endpoint MJPEG per l'elemento <img> nella UI."""
     return Response(generate_mjpeg(), mimetype="multipart/x-mixed-replace; boundary=frame")
+
+
+@app.route("/api/commands", methods=["POST"])
+def api_commands():
+    """
+    Riceve ed esegue una sequenza di comandi.
+
+    Payload JSON supportato:
+    {
+      "commands": [
+        {"action": "takeoff"},
+        {"action": "move_left", "argument": 100},
+        {"azione": "land"}
+      ],
+      "delay": 1.0
+    }
+    """
+    global action_executor
+
+    payload = request.get_json(silent=True) or {}
+    commands = payload.get("commands")
+    delay = payload.get("delay", 0.8)
+
+    if commands is None and isinstance(payload, list):
+        commands = payload
+
+    if not isinstance(commands, list):
+        return jsonify(
+            {
+                "success": False,
+                "message": "Payload non valido: inserisci un array in 'commands'",
+                "results": [],
+            }
+        ), 400
+
+    try:
+        get_tello_client()
+        if action_executor is None:
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "Executor non disponibile",
+                    "results": [],
+                }
+            ), 500
+
+        result = action_executor.execute_sequence(commands, delay_between=delay)
+        status_code = 200 if result.get("success") else 207
+        return jsonify(result), status_code
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "message": f"Errore durante l'esecuzione: {e}",
+                "results": [],
+            }
+        ), 500
 
 
 if __name__ == "__main__":

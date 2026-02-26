@@ -297,6 +297,83 @@
 				text-align: center;
 			}
 
+			.chat-wrap {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 12px;
+			}
+
+			.chat-log {
+				min-height: 170px;
+				max-height: 260px;
+				overflow-y: auto;
+				padding: 12px;
+				border-radius: 14px;
+				border: 1px solid var(--border);
+				background: rgba(9, 18, 14, 0.7);
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+
+			.chat-msg {
+				padding: 10px 12px;
+				border-radius: 12px;
+				font-size: 14px;
+				line-height: 1.35;
+				white-space: pre-wrap;
+			}
+
+			.chat-msg.user {
+				align-self: flex-end;
+				max-width: 88%;
+				background: rgba(52, 211, 153, 0.18);
+				border: 1px solid rgba(52, 211, 153, 0.3);
+			}
+
+			.chat-msg.system {
+				align-self: flex-start;
+				max-width: 100%;
+				background: rgba(255, 255, 255, 0.04);
+				border: 1px solid rgba(155, 202, 182, 0.2);
+				color: var(--muted);
+			}
+
+			.chat-input-row {
+				display: grid;
+				grid-template-columns: 1fr auto;
+				gap: 10px;
+			}
+
+			.chat-input {
+				width: 100%;
+				padding: 12px 14px;
+				border-radius: 12px;
+				border: 1px solid var(--border);
+				background: rgba(9, 18, 14, 0.85);
+				color: var(--text);
+				font: inherit;
+			}
+
+			.chat-input:focus {
+				outline: 1px solid rgba(52, 211, 153, 0.45);
+			}
+
+			.send-btn {
+				border: 1px solid var(--accent);
+				background: rgba(52, 211, 153, 0.2);
+				color: var(--text);
+				padding: 0 16px;
+				border-radius: 12px;
+				font-weight: 700;
+				cursor: pointer;
+			}
+
+			.chat-hint {
+				font-size: 13px;
+				color: var(--muted);
+			}
+
 			@keyframes fadeUp {
 				from {
 					opacity: 0;
@@ -404,7 +481,146 @@
 						</div>
 					</div>
 				</section>
+
+				<section class="card">
+					<h2>Chat comandi</h2>
+					<div class="chat-wrap">
+						<div id="chat-log" class="chat-log"></div>
+						<div class="chat-input-row">
+							<input
+								id="chat-input"
+								class="chat-input"
+								type="text"
+								placeholder="Es: takeoff, move_left 100, move_forward 80, land"
+							/>
+							<button id="send-chat" class="send-btn" type="button">Invia</button>
+						</div>
+						<p class="chat-hint">
+							Formati supportati: testo libero separato da virgole, oppure JSON array (es:
+							[{"action":"takeoff"},{"action":"move_left","argument":100}]).
+						</p>
+					</div>
+				</section>
 			</main>
 		</div>
+
+		<script>
+			const chatLog = document.getElementById("chat-log");
+			const chatInput = document.getElementById("chat-input");
+			const sendButton = document.getElementById("send-chat");
+
+			function addMessage(text, role = "system") {
+				const row = document.createElement("div");
+				row.className = `chat-msg ${role}`;
+				row.textContent = text;
+				chatLog.appendChild(row);
+				chatLog.scrollTop = chatLog.scrollHeight;
+			}
+
+			function normalizeActionName(raw) {
+				const map = {
+					take_off: "takeoff",
+					decollo: "takeoff",
+					decolla: "takeoff",
+					atterra: "land",
+					left: "move_left",
+					right: "move_right",
+					forward: "move_forward",
+					back: "move_backward",
+					up: "move_up",
+					down: "move_down",
+					cw: "rotate_clockwise",
+					ccw: "rotate_counterclockwise",
+				};
+				const key = String(raw || "").trim().toLowerCase();
+				return map[key] || key;
+			}
+
+			function parseFreeTextCommands(inputText) {
+				const chunks = inputText
+					.split(",")
+					.map((item) => item.trim())
+					.filter((item) => item.length > 0);
+
+				return chunks.map((chunk) => {
+					const [actionToken, argToken] = chunk.split(/\s+/);
+					const action = normalizeActionName(actionToken);
+					const parsedArg = Number(argToken);
+
+					if (!Number.isNaN(parsedArg)) {
+						return { action, argument: parsedArg };
+					}
+
+					return { action };
+				});
+			}
+
+			function buildCommandsPayload(rawText) {
+				const cleaned = rawText.trim();
+				if (!cleaned) {
+					return [];
+				}
+
+				if (cleaned.startsWith("[")) {
+					return JSON.parse(cleaned);
+				}
+
+				return parseFreeTextCommands(cleaned);
+			}
+
+			async function sendCommands() {
+				const text = chatInput.value;
+				if (!text.trim()) {
+					return;
+				}
+
+				addMessage(text, "user");
+				chatInput.value = "";
+
+				let commands = [];
+				try {
+					commands = buildCommandsPayload(text);
+				} catch (error) {
+					addMessage(`Formato non valido: ${error.message}`, "system");
+					return;
+				}
+
+				if (!Array.isArray(commands) || commands.length === 0) {
+					addMessage("Nessun comando valido da inviare.", "system");
+					return;
+				}
+
+				try {
+					const response = await fetch("/api/commands", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ commands }),
+					});
+
+					const payload = await response.json();
+					const lines = (payload.results || []).map(
+						(item) =>
+							`#${item.index + 1} ${item.action} ${item.argument ?? ""} -> ${item.success ? "ok" : "errore"}`
+					);
+
+					addMessage(
+						`${payload.message || "Risposta ricevuta"}\n${lines.join("\n")}`,
+						"system"
+					);
+				} catch (error) {
+					addMessage(`Errore chiamata API: ${error.message}`, "system");
+				}
+			}
+
+			sendButton.addEventListener("click", sendCommands);
+			chatInput.addEventListener("keydown", (event) => {
+				if (event.key === "Enter") {
+					event.preventDefault();
+					sendCommands();
+				}
+			});
+
+			addMessage("Chat pronta. Inserisci una sequenza di comandi.", "system");
+		</script>
 	</body>
 </html>
